@@ -1,0 +1,3 @@
+citus-db-data
+citus-healthcheck
+._docker-compose.*.*.yaml

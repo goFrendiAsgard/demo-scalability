@@ -1,0 +1,86 @@
+version: '3'
+
+services:
+
+  master:
+    container_name: "${COMPOSE_PROJECT_NAME:-db}_master"
+    image: "citusdata/citus:12.0.0"
+    ports:
+      - "5432:5432"
+    labels:
+      - "com.citusdata.role=Master"
+    environment: &AUTH
+      - POSTGRES_PASSWORD=pass
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=store
+      - PGUSER=postgres
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    networks:
+      - postgres-network
+    volumes:
+      - ./citus-db-data/:/var/lib/postgresql/data/
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  worker-1:
+    container_name: "${COMPOSE_PROJECT_NAME:-db}_worker_1"
+    image: "citusdata/citus:12.0.0"
+    ports:
+      - "5433:5432"
+    labels:
+      - "com.citusdata.role=Worker"
+    depends_on:
+      - manager
+    environment: *AUTH
+    networks:
+      - postgres-network
+    command: "/wait-for-manager.sh"
+    volumes:
+      - ./citus-healthcheck:/healthcheck
+
+  worker-2:
+    container_name: "${COMPOSE_PROJECT_NAME:-db}_worker_2"
+    image: "citusdata/citus:12.0.0"
+    ports:
+      - "5434:5432"
+    labels:
+      - "com.citusdata.role=Worker"
+    depends_on:
+      - manager
+    environment: *AUTH
+    networks:
+      - postgres-network
+    command: "/wait-for-manager.sh"
+    volumes:
+      - ./citus-healthcheck:/healthcheck
+
+  worker-3:
+    container_name: "${COMPOSE_PROJECT_NAME:-db}_worker_3"
+    image: "citusdata/citus:12.0.0"
+    ports:
+      - "5435:5432"
+    labels:
+      - "com.citusdata.role=Worker"
+    depends_on:
+      - manager
+    environment: *AUTH
+    networks:
+      - postgres-network
+    command: "/wait-for-manager.sh"
+    volumes:
+      - ./citus-healthcheck:/healthcheck
+
+  manager:
+    container_name: "${COMPOSE_PROJECT_NAME:-db}_manager"
+    image: "citusdata/membership-manager:0.3.0"
+    volumes:
+      - "${DOCKER_SOCK:-/var/run/docker.sock}:/var/run/docker.sock"
+      - ./citus-healthcheck:/healthcheck
+    depends_on:
+      - master
+    environment: *AUTH
+    networks:
+      - postgres-network
+
+networks: 
+  postgres-network:
+    driver: bridge
